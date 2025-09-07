@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极速跑酷 Ultra - 模块化版本</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas, #particleCanvas {
+            position: absolute;
+            border: 2px solid #74b9ff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(116, 185, 255, 0.3);
+            background: transparent;
+        }
+
+        #particleCanvas {
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        #gameCanvas {
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(116, 185, 255, 0.3);
+            border-top: 4px solid #74b9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 24px;
+            color: #74b9ff;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtitle {
+            font-size: 16px;
+            color: #b2bec3;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .version-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            border: 2px solid #74b9ff;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+        }
+
+        .performance-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 12px;
+            color: #00ff00;
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+            font-family: monospace;
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #74b9ff;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 12px;
+            color: #b2bec3;
+            z-index: 20;
+            pointer-events: none;
+            max-width: 300px;
+        }
+
+        .controls-info h4 {
+            color: #74b9ff;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .controls-info p {
+            margin: 4px 0;
+        }
+
+        .system-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(116, 185, 255, 0.1);
+            border: 1px solid #74b9ff;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+            color: #74b9ff;
+            z-index: 20;
+            pointer-events: none;
+            font-family: monospace;
+        }
+
+        .error-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2d3436, #636e72);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .error-screen.show {
+            display: flex;
+        }
+
+        .error-title {
+            font-size: 36px;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            font-size: 18px;
+            color: #b2bec3;
+            margin-bottom: 30px;
+            max-width: 600px;
+        }
+
+        .error-details {
+            font-size: 14px;
+            color: #636e72;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 800px;
+            word-break: break-all;
+        }
+
+        @media (max-width: 768px) {
+            .controls-info, .system-info {
+                font-size: 10px;
+                padding: 10px;
+                max-width: 250px;
+            }
+            
+            .performance-badge, .version-badge {
+                font-size: 11px;
+                padding: 8px 12px;
+            }
+
+            .loading-text {
+                font-size: 20px;
+            }
+
+            .loading-subtitle {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 版本标识 -->
+        <div class="version-badge">
+            🧩 模块化架构 v3.0
+        </div>
+
+        <!-- 性能监控 -->
+        <div class="performance-badge" id="performanceBadge">
+            ⚡ 系统加载中...
+        </div>
+
+        <!-- 游戏Canvas -->
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        
+        <!-- 粒子Canvas -->
+        <canvas id="particleCanvas" width="1200" height="800"></canvas>
+
+        <!-- UI覆盖层 -->
+        <div class="ui-overlay"></div>
+
+        <!-- 加载屏幕 -->
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">极速跑酷 Ultra</div>
+            <div class="loading-subtitle">
+                模块化架构版本加载中...<br><br>
+                🧩 <strong>GameEngine</strong> - 核心引擎系统<br>
+                🎮 <strong>PlayerSystem</strong> - 玩家控制系统<br>
+                🎯 <strong>EntitySystem</strong> - 实体管理系统<br>
+                🎨 <strong>RenderSystem</strong> - 渲染引擎系统<br>
+                🌍 <strong>WorldSystem</strong> - 世界环境系统<br>
+                🖥️ <strong>UISystem</strong> - 用户界面系统<br>
+                💥 <strong>CollisionSystem</strong> - 碰撞检测系统
+            </div>
+        </div>
+
+        <!-- 错误屏幕 -->
+        <div class="error-screen" id="errorScreen">
+            <div class="error-title">🚫 模块加载失败</div>
+            <div class="error-message" id="errorMessage">
+                游戏模块无法正常加载，请检查浏览器是否支持ES6模块。
+            </div>
+            <div class="error-details" id="errorDetails">
+                建议使用现代浏览器（Chrome 61+, Firefox 60+, Safari 10.1+, Edge 16+）
+            </div>
+        </div>
+
+        <!-- 控制说明 -->
+        <div class="controls-info">
+            <h4>🎮 游戏控制</h4>
+            <p><strong>空格/↑</strong> - 跳跃</p>
+            <p><strong>↓/S</strong> - 滑铲</p>
+            <p><strong>ESC</strong> - 暂停/继续</p>
+            <p><strong>R</strong> - 重新开始</p>
+            <p><strong>D</strong> - 调试信息</p>
+            <p><strong>F11</strong> - 全屏模式</p>
+            <h4>📱 触屏控制</h4>
+            <p><strong>点击</strong> - 跳跃</p>
+            <p><strong>向下滑动</strong> - 滑铲</p>
+        </div>
+
+        <!-- 系统信息 -->
+        <div class="system-info" id="systemInfo">
+            <div>🧩 模块化架构</div>
+            <div>⚡ 性能优化</div>
+            <div>🎯 事件驱动</div>
+            <div>🔧 系统解耦</div>
+            <div>📦 ES6模块</div>
+        </div>
+    </div>
+
+    <!-- 模块化游戏脚本 -->
+    <script type="module">
+        // 性能监控更新函数
+        window.updatePerformanceBadge = function() {
+            const badge = document.getElementById('performanceBadge');
+            if (window.game && window.game.engine && window.game.engine.performance) {
+                const perf = window.game.engine.performance;
+                const systemCount = window.game.engine.systems ? window.game.engine.systems.size : 0;
+                badge.innerHTML = `
+                    ⚡ ${perf.fps} FPS<br>
+                    🧩 ${systemCount} 系统<br>
+                    🎨 ${perf.drawCalls} 绘制
+                `;
+            }
+        };
+
+        // 错误处理函数
+        function showError(message, details = '') {
+            const errorScreen = document.getElementById('errorScreen');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorDetails = document.getElementById('errorDetails');
+            const loadingScreen = document.getElementById('loadingScreen');
+            
+            loadingScreen.style.display = 'none';
+            errorMessage.textContent = message;
+            errorDetails.textContent = details;
+            errorScreen.classList.add('show');
+        }
+
+        // 模块加载和初始化
+        async function initGame() {
+            try {
+                console.log('🚀 Starting modular game initialization...');
+                
+                // 检查浏览器模块支持
+                if (!window.import) {
+                    throw new Error('浏览器不支持ES6模块，请使用现代浏览器');
+                }
+                
+                // 动态导入主游戏模块
+                const { ParkourGameModular } = await import('./game_modular.js');
+                
+                // 等待DOM完全准备
+                if (document.readyState === 'loading') {
+                    await new Promise(resolve => {
+                        document.addEventListener('DOMContentLoaded', resolve);
+                    });
+                }
+                
+                console.log('📦 Modules loaded successfully');
+                
+                // 隐藏加载屏幕
+                setTimeout(() => {
+                    const loadingScreen = document.getElementById('loadingScreen');
+                    loadingScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }, 1500);
+                
+                // 启动性能监控
+                setInterval(window.updatePerformanceBadge, 1000);
+                
+                console.log('✅ Modular Parkour Game ready!');
+                
+            } catch (error) {
+                console.error('❌ Game initialization failed:', error);
+                showError(
+                    '模块化游戏初始化失败',
+                    `错误详情: ${error.message}\n\n请确保：\n1. 使用现代浏览器\n2. 通过HTTP服务器访问\n3. 所有模块文件存在`
+                );
+            }
+        }
+
+        // 启动游戏
+        initGame();
+
+        // 全局错误处理
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            if (event.error && event.error.message.includes('module')) {
+                showError(
+                    'ES6模块加载错误',
+                    `${event.error.message}\n\n请通过HTTP服务器访问此页面，而不是直接打开文件。`
+                );
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            if (event.reason && event.reason.message) {
+                showError(
+                    '模块加载被拒绝',
+                    event.reason.message
+                );
+            }
+        });
+    </script>
+    
+    <script>
+        // 防止页面滚动
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // 防止双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        console.log('🧩 极速跑酷 Ultra - 模块化架构版本');
+        console.log('✨ 特性: 模块化设计、系统解耦、事件驱动、性能优化');
+        console.log('🔧 架构: GameEngine + 6个专业系统模块');
+    </script>
+</body>
+</html>

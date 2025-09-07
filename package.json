@@ -1,0 +1,27 @@
+{
+  "name": "paoku2-ultra",
+  "version": "1.0.0",
+  "description": "极速跑酷 Ultra - 增强版无限滚屏跑酷游戏",
+  "main": "script_clean.js",
+  "scripts": {
+    "lint": "eslint *.js --fix",
+    "lint:check": "eslint *.js",
+    "format": "prettier --write *.js *.json *.md",
+    "format:check": "prettier --check *.js *.json *.md",
+    "dev": "python -m http.server 8080",
+    "build": "npm run lint && npm run format"
+  },
+  "keywords": [
+    "game",
+    "parkour",
+    "canvas",
+    "javascript",
+    "runner"
+  ],
+  "author": "Windsurf AI",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.6.2"
+  }
+}

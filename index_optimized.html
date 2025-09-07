@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极速跑酷 Ultra - 性能优化版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas, #particleCanvas {
+            position: absolute;
+            border: 2px solid #74b9ff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(116, 185, 255, 0.3);
+            background: transparent;
+        }
+
+        #particleCanvas {
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        #gameCanvas {
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(116, 185, 255, 0.3);
+            border-top: 4px solid #74b9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 24px;
+            color: #74b9ff;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtitle {
+            font-size: 16px;
+            color: #b2bec3;
+            text-align: center;
+        }
+
+        .performance-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 14px;
+            color: #00ff00;
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 12px;
+            color: #b2bec3;
+            z-index: 20;
+            pointer-events: none;
+            max-width: 300px;
+        }
+
+        .controls-info h4 {
+            color: #74b9ff;
+            margin-bottom: 8px;
+        }
+
+        .controls-info p {
+            margin: 4px 0;
+        }
+
+        .version-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(116, 185, 255, 0.1);
+            border: 2px solid #74b9ff;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 14px;
+            color: #74b9ff;
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls-info {
+                font-size: 10px;
+                padding: 10px;
+                max-width: 250px;
+            }
+            
+            .performance-badge, .version-info {
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 版本信息 -->
+        <div class="version-info">
+            🚀 性能优化版 v2.0
+        </div>
+
+        <!-- 性能指示器 -->
+        <div class="performance-badge" id="performanceBadge">
+            ⚡ 优化模式
+        </div>
+
+        <!-- 游戏Canvas -->
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        
+        <!-- 粒子Canvas -->
+        <canvas id="particleCanvas" width="1200" height="800"></canvas>
+
+        <!-- UI覆盖层 -->
+        <div class="ui-overlay"></div>
+
+        <!-- 加载屏幕 -->
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">极速跑酷 Ultra</div>
+            <div class="loading-subtitle">
+                性能优化版本加载中...<br>
+                ✨ 离屏Canvas缓存<br>
+                ⚡ 绘制批处理优化<br>
+                🎯 空间碰撞检测<br>
+                🔄 对象池管理
+            </div>
+        </div>
+
+        <!-- 控制说明 -->
+        <div class="controls-info">
+            <h4>🎮 游戏控制</h4>
+            <p><strong>空格/↑</strong> - 跳跃</p>
+            <p><strong>↓/S</strong> - 滑铲</p>
+            <p><strong>ESC</strong> - 暂停</p>
+            <p><strong>R</strong> - 重新开始</p>
+            <p><strong>D</strong> - 调试信息</p>
+            <p><strong>M</strong> - 静音</p>
+            <h4>📱 触屏控制</h4>
+            <p><strong>点击</strong> - 跳跃</p>
+            <p><strong>向下滑动</strong> - 滑铲</p>
+        </div>
+    </div>
+
+    <script src="script_optimized.js"></script>
+    
+    <script>
+        // 性能监控显示
+        function updatePerformanceBadge() {
+            const badge = document.getElementById('performanceBadge');
+            if (window.game && window.game.performance) {
+                const perf = window.game.performance;
+                badge.innerHTML = `
+                    ⚡ ${perf.fps} FPS<br>
+                    🎨 ${perf.drawCalls} 绘制<br>
+                    💾 ${perf.cacheHits} 缓存
+                `;
+            }
+        }
+
+        // 每秒更新性能显示
+        setInterval(updatePerformanceBadge, 1000);
+
+        // 隐藏加载屏幕
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            loadingScreen.classList.add('hidden');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }, 2000);
+
+        // 防止页面滚动
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // 防止双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // 全屏支持
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        console.log('🚀 极速跑酷 Ultra - 性能优化版本已加载');
+        console.log('✨ 特性: 离屏Canvas缓存、绘制批处理、空间碰撞检测、对象池管理');
+    </script>
+</body>
+</html>
